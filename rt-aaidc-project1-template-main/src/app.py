@@ -22,11 +22,9 @@ def load_documents() -> List[Dict[str, Any]]:
     """
     results = []
     
-    # --- UPDATE THIS LAYER TO RESOLVE YOUR 'src' LAYOUT ---
     # This finds the directory of app.py, goes up one level, and targets 'data'
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(base_dir, "..", "data")
-    # -----------------------------------------------------
     
     if not os.path.exists(data_dir):
         print(f"[*] Creating target context data directory: {data_dir}")
@@ -74,17 +72,22 @@ class RAGAssistant:
         self.vector_db = VectorDB()
 
         # Create RAG prompt template to enforce grounding rules
-        self.prompt_template = ChatPromptTemplate.from_template(
-            "You are a helpful, precise technical assistant.\n"
-            "Use solely the extracted context documents attached below to form an answer. "
-            "If the text does not contain relevant insights to answer the question, state openly "
-            "that the context material provides insufficient reference facts.\n\n"
-            "=== Retracted Context Begin ===\n"
-            "{context}\n"
-            "=== Retracted Context End ===\n\n"
-            "User Query: {question}\n"
-            "Response:"
-        )
+        self.prompt_template = ChatPromptTemplate.from_template("""
+You are a strict, focused technical assistant. Your task is to answer the user's question using ONLY the provided context below.
+
+CRITICAL RULES:
+1. Rely only on the clear facts directly mentioned in the context.
+2. If the context does not contain the answer to the question, or if the question is out of scope for these documents, you must reply exactly with: "I am sorry, but I do not have enough specific information in my local knowledge base to answer that query."
+3. Do not use your own external pre-trained knowledge to answer general questions (such as general science, broad programming definitions, or unrelated topics).
+
+Context:
+{context}
+
+Question: 
+{question}
+
+Answer:
+""")
 
         # Create the execution chain
         self.chain = self.prompt_template | self.llm | StrOutputParser()
@@ -176,7 +179,14 @@ def main():
         print(f"Loaded {len(sample_docs)} sample source document data files.")
 
         if sample_docs:
-            assistant.add_documents(sample_docs)
+            # OPTIMIZATION: Prevent duplicate database scaling bloat between sessions
+            existing_count = assistant.vector_db.collection.count()
+            if existing_count > 0:
+                print(f"[*] Vector database already contains {existing_count} chunks. Skipping re-ingestion phase.")
+            else:
+                print("[*] Vector store empty. Beginning extraction and ingestion...")
+                # FIXED: Restored original structural direct structure tracking passing
+                assistant.add_documents(sample_docs)
         else:
             print("[*] Notice: No initial text file materials found in data folder directory. "
                   "Please populate './data' with .txt or .md files.")
@@ -193,7 +203,6 @@ def main():
             if question.lower() == "quit":
                 done = True
             else:
-                # FIXED: Called 'invoke' method to align with the core class layout definition
                 result = assistant.invoke(question)
                 print(f"\nAnswer:\n{result}\n" + "-"*50 + "\n")
 

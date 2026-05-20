@@ -1,4 +1,4 @@
-# OmniRAG: A Modular Multi-Provider RAG Assistant with ChromaDB
+# RAG-Assistant: A Multi-Provider RAG System with ChromaDB
 
 OmniRAG is a production-grade, local Retrieval-Augmented Generation (RAG) framework designed to ingest, chunk, embed, and query multi-domain document corpuses. Built with a highly modular architecture, the system isolates orchestration logic to allow seamless hot-swapping between prominent LLM providers (OpenAI, Groq, Google Gemini) while utilizing a persistent local vector database for semantic context grounding.
 

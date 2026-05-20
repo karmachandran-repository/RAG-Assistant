@@ -18,6 +18,8 @@ class VectorDB:
             collection_name: Name of the ChromaDB collection
             embedding_model: HuggingFace model name for embeddings
         """
+        from chromadb.config import Settings
+
         self.collection_name = collection_name or os.getenv(
             "CHROMA_COLLECTION_NAME", "rag_documents"
         )
@@ -25,14 +27,16 @@ class VectorDB:
             "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
         )
 
-        # --- UPDATE THIS IN vectordb.py ---
         # Calculate absolute project root path dynamically
         base_dir = os.path.dirname(os.path.abspath(__file__)) # points to src/
         project_root = os.path.join(base_dir, "..")          # points to root/
         chroma_path = os.path.join(project_root, "chroma_db")
         
-        # Initialize ChromaDB client using the deterministic path
-        self.client = chromadb.PersistentClient(path=chroma_path)
+        # FIXED: Explicitly disable anonymous telemetry to prevent internal len() crashes
+        self.client = chromadb.PersistentClient(
+            path=chroma_path,
+            settings=Settings(anonymized_telemetry=False)
+        )
 
         # Load embedding model
         print(f"Loading embedding model: {self.embedding_model_name}")
@@ -61,7 +65,7 @@ class VectorDB:
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=int(chunk_size * 0.15),  # 15% semantic overlap context
-            length_function=len,
+            length_function=lambda x: len(x),     # FIXED: Uses explicit lambda to protect function resolution
             separators=["\n\n", "\n", " ", ""]
         )
         return splitter.split_text(text)
